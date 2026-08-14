@@ -119,7 +119,7 @@
 
 .yard-slot .coin-wrapper {
   position: absolute;
-  inset: -20%;
+  inset: 18%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -163,6 +163,25 @@
   z-index: 5;
 }
 
+.board-wrap.rotated-view {
+  transform: rotate(180deg);
+}
+.board-wrap.rotated-view .token,
+.board-wrap.rotated-view .pulse-badge,
+.board-wrap.rotated-view .yard-slot .coin-wrapper,
+.board-wrap.rotated-view .arrow,
+.board-wrap.rotated-view .star-icon {
+  transform: rotate(-180deg);
+}
+
+/* Ensure tokens keep their translate when counter-rotated */
+.board-wrap.rotated-view .token {
+  transform: translate(-50%, -50%) rotate(-180deg);
+}
+.board-wrap.rotated-view .token.movable:hover {
+  transform: translate(-50%, -50%) rotate(-180deg) scale(1.15);
+}
+
 .token {
   position: absolute;
   width: 7.2%;
@@ -174,6 +193,16 @@
 .token.movable { cursor: pointer; }
 .token.movable:hover { transform: translate(-50%, -50%) scale(1.15); z-index: 10; }
 .token.movable svg { animation: pulseToken 1.4s ease-in-out infinite; }
+
+.timer-warning {
+  color: #ef4444 !important;
+  animation: timerPulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes timerPulse {
+  from { opacity: 0.7; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.05); }
+}
 
 @keyframes pulseToken {
   0%, 100% { filter: drop-shadow(0 3px 6px rgba(0,0,0,.6)) drop-shadow(0 0 6px rgba(255, 46, 136, 0.45)); }

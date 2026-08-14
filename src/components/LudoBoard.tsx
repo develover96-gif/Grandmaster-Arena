@@ -30,10 +30,47 @@ const PALETTES: any = {
 };
 const STAR_PATH = 'M0,-19.5 L4.7,-6.5 L18.6,-6 L7.7,2.5 L11.5,15.8 L0,8 L-11.5,15.8 L-7.7,2.5 L-18.6,-6 L-4.7,-6.5 Z';
 
-function CoinSVG({ color, id = 'c' }: { color: string; id?: string }) {
+function CoinSVG({ color, id = 'c', style = 'classic' }: { color: string; id?: string; style?: 'classic' | 'neon' | 'metallic' }) {
   const p = color === '#ff2e88' ? PALETTES.pink : (color === '#1fe0ff' ? PALETTES.cyan : PALETTES.slate);
-  const uid = id.replace(/[^a-z0-9]/gi, '') + (color === '#ff2e88' ? 'p' : 'c');
+  const uid = id.replace(/[^a-z0-9]/gi, '') + (color === '#ff2e88' ? 'p' : 'c') + style;
   
+  if (style === 'neon') {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" className="w-full h-full block">
+        <defs>
+          <filter id={`neon${uid}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+        <circle cx="80" cy="80" r="60" fill="none" stroke={p.mid} strokeWidth="6" strokeOpacity="0.4" filter={`url(#neon${uid})`} />
+        <circle cx="80" cy="80" r="60" fill="none" stroke="#fff" strokeWidth="2" />
+        <circle cx="80" cy="80" r="50" fill="none" stroke={p.light} strokeWidth="4" opacity="0.6" filter={`url(#neon${uid})`} />
+        <path transform="translate(80 80) scale(0.8)" d={STAR_PATH} fill="none" stroke={p.light} strokeWidth="2" filter={`url(#neon${uid})`} />
+      </svg>
+    );
+  }
+
+  if (style === 'metallic') {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" className="w-full h-full block drop-shadow-2xl">
+        <defs>
+          <linearGradient id={`metal${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={p.hi} />
+            <stop offset="25%" stopColor={p.light} />
+            <stop offset="50%" stopColor={p.hi} />
+            <stop offset="75%" stopColor={p.dark} />
+            <stop offset="100%" stopColor={p.hi} />
+          </linearGradient>
+        </defs>
+        <circle cx="80" cy="84" r="60" fill="#000" opacity="0.4" />
+        <circle cx="80" cy="80" r="60" fill={`url(#metal${uid})`} stroke={p.knurl} strokeWidth="2" />
+        <circle cx="80" cy="80" r="50" fill="none" stroke={p.hi} strokeWidth="1" strokeOpacity="0.5" />
+        <path transform="translate(80 80)" d={STAR_PATH} fill={p.dark} fillOpacity="0.3" stroke={p.knurl} strokeWidth="1" />
+      </svg>
+    );
+  }
+
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" className="w-full h-full block drop-shadow-xl">
       <defs>
@@ -65,7 +102,7 @@ function CoinSVG({ color, id = 'c' }: { color: string; id?: string }) {
 
 function StarSVG() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4 opacity-30" fill="white">
+    <svg viewBox="0 0 24 24" className="w-4 h-4 opacity-30 star-icon" fill="white">
       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
     </svg>
   );
@@ -157,7 +194,8 @@ export function LudoBoard({
   diceRolled,
   lastRoll,
   isShaking,
-  previewMoves = [] 
+  previewMoves = [],
+  coinStyle = 'classic'
 }: any) {
   const cells = useMemo(buildCells, []);
 
@@ -187,7 +225,7 @@ export function LudoBoard({
       if (tokens.length > 1) {
         // Apply slight offset for multiple tokens in the same cell
         const angle = (index / tokens.length) * Math.PI * 2;
-        const radius = 0.8; // subtle shift
+        const radius = 0.22; // very tight shift for ~10% visibility
         offsetX = Math.cos(angle) * radius;
         offsetY = Math.sin(angle) * radius;
       }
@@ -210,7 +248,7 @@ export function LudoBoard({
 
   return (
     <div className="board-mat w-full">
-      <div className="board-wrap" id="boardWrap">
+      <div className={`board-wrap ${myColor === 'cyan' ? 'rotated-view' : ''}`} id="boardWrap">
         <div className="board">
           {cells.map((cell) => (
             <div className={cell.cls} key={cell.k}>
@@ -264,7 +302,7 @@ export function LudoBoard({
                          className={`coin-wrapper ${move ? 'movable' : ''}`}
                          onClick={() => move && onPickMove(move)}
                        >
-                         <CoinSVG color={COLORS[color]} id={`${color}-yard-${slot}`} />
+                         <CoinSVG color={COLORS[color]} id={`${color}-yard-${slot}`} style={coinStyle} />
                        </div>
                      ) : null}
                    </div>
@@ -290,7 +328,7 @@ export function LudoBoard({
               }}
               onClick={() => t.move && onPickMove(t.move)}
             >
-              <CoinSVG color={COLORS[t.color]} id={t.color + '-' + t.i} />
+              <CoinSVG color={COLORS[t.color]} id={t.color + '-' + t.i} style={coinStyle} />
             </div>
           ))}
           {previewCells.map((p: any) => (

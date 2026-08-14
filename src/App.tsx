@@ -1,30 +1,92 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { GameState, ClientToServerEvents, ServerToClientEvents } from './types';
+import { GameState, ClientToServerEvents, ServerToClientEvents, LudoToken } from './types';
 import { Lobby } from './components/Lobby';
 import { Board } from './components/Board';
 import { LudoBoard } from './components/LudoBoard';
 import Dice3D from './components/Dice3D';
 import { Matchmaking } from './components/Matchmaking';
-import { Trophy, Swords, ArrowLeft } from 'lucide-react';
+import { Trophy, Swords, ArrowLeft, Coins } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { playMoveSound, playRollSound, playCaptureSound, playHomeSound } from './lib/audio';
+import confetti from 'canvas-confetti';
 
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const prevStateRef = useRef<GameState | null>(null);
   const [playerColor, setPlayerColor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isMatching, setIsMatching] = useState(false);
   const [selectedStake, setSelectedStake] = useState<number | null>(null);
   const [isShaking, setIsShaking] = useState(false);
+  const [bonusToast, setBonusToast] = useState<{ id: number; msg: string; color: string } | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [coinStyle, setCoinStyle] = useState<'classic' | 'neon' | 'metallic'>('classic');
 
   useEffect(() => {
     socket.on('game:update', (state: GameState) => {
+      // Audio feedback triggers
+      if (prevStateRef.current && state.gameType === 'ludo') {
+        const prev = prevStateRef.current;
+        
+        // Dice Roll
+        if (state.diceRolled && !prev.diceRolled) {
+          playRollSound();
+        }
+
+        // Token Movements, Captures, and Home arrivals
+        Object.keys(state.players).forEach(color => {
+          const p = state.players[color];
+          const prevP = prev.players[color];
+          if (p && prevP && p.tokens && prevP.tokens) {
+            p.tokens.forEach((t: any, i: number) => {
+              const prevT = prevP.tokens[i] as any;
+              if (t.loc !== prevT.loc) {
+                if (t.loc === 'yard' && typeof prevT.loc === 'number') {
+                  playCaptureSound();
+                  confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#ef4444', '#f59e0b', '#ffffff']
+                  });
+                  setBonusToast({ id: Date.now(), msg: 'TACTICAL CAPTURE! +10% BONUS', color: 'red' });
+                } else if (t.loc === 56) {
+                  playHomeSound();
+                  confetti({
+                    particleCount: 150,
+                    spread: 100,
+                    origin: { y: 0.6 },
+                    colors: ['#4f46e5', '#10b981', '#ffffff']
+                  });
+                  setBonusToast({ id: Date.now(), msg: 'TOKEN HOME! +10% BONUS', color: 'indigo' });
+                } else {
+                  playMoveSound();
+                }
+              }
+            });
+          }
+        });
+
+        // Game End
+        if (state.status === 'ended' && prev.status !== 'ended') {
+          playHomeSound();
+        }
+      }
+
       setGameState(state);
+      prevStateRef.current = state;
       setIsMatching(false);
       setError(null);
     });
+
+    // Auto-clear bonus toast
+    if (bonusToast) {
+      const timer = setTimeout(() => setBonusToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
 
     socket.on('room:join', (roomId: string) => {
       socket.emit('room:join', roomId);
@@ -80,7 +142,15 @@ export default function App() {
   }, [gameState?.roomId, isShaking]);
 
   const handleLeave = () => {
-    window.location.reload(); 
+    if (gameState?.status === 'playing') {
+      setShowExitConfirm(true);
+    } else {
+      window.location.reload(); 
+    }
+  };
+
+  const confirmLeave = () => {
+    window.location.reload();
   };
 
   if (!gameState && isMatching) {
@@ -156,6 +226,59 @@ export default function App() {
         </motion.div>
       )}
 
+      <AnimatePresence>
+        {showExitConfirm && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl"
+            >
+              <h3 className="text-xl font-bold text-white mb-2">Abandon Arena?</h3>
+              <p className="text-slate-400 text-sm mb-6">You will forfeit your stake and the match progress will be lost. Are you sure you want to leave?</p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowExitConfirm(false)}
+                  className="flex-1 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold transition-colors"
+                >
+                  Stay
+                </button>
+                <button 
+                  onClick={confirmLeave}
+                  className="flex-1 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold transition-colors"
+                >
+                  Leave
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {bonusToast && (
+          <motion.div
+            key={bonusToast.id}
+            initial={{ opacity: 0, y: 50, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className={`fixed bottom-12 right-12 z-50 px-6 py-4 rounded-xl border shadow-2xl flex items-center gap-4
+              ${bonusToast.color === 'red' ? 'bg-red-500/20 border-red-500/30 text-red-400' : 'bg-indigo-500/20 border-indigo-500/30 text-indigo-400'}`}
+          >
+            <div className={`p-2 rounded-lg ${bonusToast.color === 'red' ? 'bg-red-500/20' : 'bg-indigo-500/20'}`}>
+              <Coins className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest">{bonusToast.msg}</p>
+              <p className="text-[10px] opacity-60 uppercase tracking-tighter">Stake dividend processed</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden">
         {/* Left Sidebar: Opponent */}
@@ -177,12 +300,20 @@ export default function App() {
                   <p className="font-semibold text-white">
                     {isBot(opponentColor) ? 'Tactical Bot' : 'Challenger'}
                   </p>
-                  <p className="text-[10px] text-slate-500 font-mono tracking-tighter uppercase">
-                    {isBot(opponentColor) ? 'ENGINE ACTIVE' : `Opponent`}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] text-slate-500 font-mono tracking-tighter uppercase">
+                      {isBot(opponentColor) ? 'ENGINE ACTIVE' : `Opponent`}
+                    </p>
+                    {gameState.players[opponentColor]?.balance !== undefined && (
+                      <div className="flex items-center gap-1 text-[10px] text-yellow-500/80 font-bold">
+                        <Coins className="w-3 h-3" />
+                        <span>{(gameState.players[opponentColor].balance).toFixed(3)}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="ml-auto">
-                  <span className={`text-lg font-mono ${gameState.turn === opponentColor ? 'text-white' : 'text-slate-500'}`}>
+                  <span className={`text-lg font-mono ${gameState.turn === opponentColor ? (gameState.turnTimer <= 10 ? 'timer-warning' : 'text-white') : 'text-slate-500'}`}>
                     {gameState.turn === opponentColor ? formatTime(gameState.turnTimer) : '--:--'}
                   </span>
                 </div>
@@ -214,10 +345,30 @@ export default function App() {
               </div>
               <div>
                 <p className="font-semibold text-white">Commander</p>
-                <p className="text-[10px] text-slate-500 font-mono tracking-tighter uppercase">Primary Seat</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] text-slate-500 font-mono tracking-tighter uppercase">Primary Seat</p>
+                  {gameState.players[playerColor!]?.balance !== undefined && (
+                    <div className="flex items-center gap-1 text-[10px] text-yellow-500/80 font-bold">
+                      <Coins className="w-3 h-3" />
+                      <span>{(gameState.players[playerColor!].balance).toFixed(3)}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-1 mt-1">
+                  {(['classic', 'neon', 'metallic'] as const).map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setCoinStyle(s)}
+                      className={`text-[8px] px-1.5 py-0.5 rounded-full border transition-all uppercase tracking-tighter font-bold
+                        ${coinStyle === s ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-500'}`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="ml-auto">
-                <span className={`text-lg font-mono ${isMyTurn ? 'text-indigo-400' : 'text-slate-500'}`}>
+                <span className={`text-lg font-mono ${isMyTurn ? (gameState.turnTimer <= 10 ? 'timer-warning' : 'text-indigo-400') : 'text-slate-500'}`}>
                   {isMyTurn ? formatTime(gameState.turnTimer) : '--:--'}
                 </span>
               </div>
@@ -258,6 +409,7 @@ export default function App() {
                 diceRolled={gameState.diceRolled}
                 lastRoll={gameState.lastRoll}
                 isShaking={isShaking}
+                coinStyle={coinStyle}
                 previewMoves={(() => {
                   if (!isMyTurn || !gameState.diceRolled || !gameState.lastRoll) return [];
                   const player = gameState.players[playerColor!];

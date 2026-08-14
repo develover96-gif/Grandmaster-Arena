@@ -41,12 +41,16 @@ async function startServer() {
       if (room.status === 'playing') {
         room.turnTimer--;
         if (room.turnTimer <= 0) {
-          room.status = 'ended';
           const playerColors = Object.keys(room.players);
           const currentIndex = playerColors.indexOf(room.turn);
           const nextIndex = (currentIndex + 1) % playerColors.length;
-          room.winner = playerColors[nextIndex];
-          room.endReason = 'timeout';
+          
+          room.turn = playerColors[nextIndex];
+          room.turnTimer = TURN_TIME;
+          room.lastRoll = null;
+          room.diceRolled = false;
+          room.consecutiveSixes = 0;
+          room.botThinking = false;
         }
 
         // Bot Logic
@@ -252,10 +256,21 @@ async function startServer() {
               if (!safeAbsIndices.includes(absIdx)) {
                 t.loc = 'yard';
                 captureHappened = true;
+                // Bonus for capture (10% of stake)
+                if (player.balance !== undefined) {
+                  player.balance += room.stake * 0.1;
+                }
               }
             }
           }
         });
+      }
+    }
+
+    if (newLoc === 56) {
+      // Bonus for home (10% of stake)
+      if (player.balance !== undefined) {
+        player.balance += room.stake * 0.1;
       }
     }
 
@@ -286,8 +301,8 @@ async function startServer() {
   // --- Shared Logic ---
   function createRoom(roomId: string, gameType: 'checkers' | 'ludo' = 'checkers', stake: number = 0.025): GameState {
     const players: Record<string, any> = gameType === 'checkers' ? { w: null, b: null } : { 
-      pink: { id: null, tokens: initLudoTokens('pink') }, 
-      cyan: { id: null, tokens: initLudoTokens('cyan') } 
+      pink: { id: null, tokens: initLudoTokens('pink'), balance: stake }, 
+      cyan: { id: null, tokens: initLudoTokens('cyan'), balance: stake } 
     };
     const turn = gameType === 'checkers' ? 'w' : 'pink';
 

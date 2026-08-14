@@ -1,4 +1,6 @@
 
+export type CoinStyle = 'classic' | 'neon' | 'metallic';
+
 export type CheckersColor = 'w' | 'b';
 export type LudoColor = 'red' | 'green' | 'yellow' | 'blue';
 export type PlayerId = string | null;

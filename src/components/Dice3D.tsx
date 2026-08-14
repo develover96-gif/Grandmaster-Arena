@@ -36,9 +36,10 @@ export default function Dice3D({ value, shaking = false, onClick = null }: Dice3
         clearInterval(flickRef.current);
         flickRef.current = null;
       }
-      const v = value || 1;
-      cube.style.transition = 'transform .9s cubic-bezier(.2,.9,.3,1.2)';
-      cube.style.transform = faceRot[v];
+      if (value !== null) {
+        cube.style.transition = 'transform .9s cubic-bezier(.2,.9,.3,1.2)';
+        cube.style.transform = faceRot[value];
+      }
     }
     return () => {
       if (flickRef.current) clearInterval(flickRef.current);
