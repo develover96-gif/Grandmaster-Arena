@@ -1,6 +1,6 @@
 {
-  "name": "Checkers Arena",
-  "description": "A high-stakes, real-time multiplayer checkers battleground featuring fluid animations and server-authoritative move validation.",
+  "name": "Provably Fair Arena",
+  "description": "A high-stakes, real-time multiplayer gaming platform featuring Checkers, Ludo, and Callbreak. Powered by provably fair shuffling and server-authoritative logic.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

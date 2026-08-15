@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Dice3D from './Dice3D';
 import {
   TRACK_SET,
@@ -197,7 +197,29 @@ export function LudoBoard({
   previewMoves = [],
   coinStyle = 'classic'
 }: any) {
+  const [hoveredToken, setHoveredToken] = useState<{ color: string; i: number } | null>(null);
   const cells = useMemo(buildCells, []);
+
+  const hoveredPath = useMemo(() => {
+    if (!hoveredToken) return new Set<string>();
+    const move = previewMoves.find((m: any) => m.i === hoveredToken.i && m.color === hoveredToken.color);
+    if (!move) return new Set<string>();
+
+    const pathKeys = new Set<string>();
+    const player = mirror.players[move.color];
+    const token = player?.tokens?.[move.i];
+    if (!token) return pathKeys;
+
+    let currentLoc = token.loc === 'yard' ? 0 : token.loc + 1;
+    const destLoc = move.dest;
+
+    // Build intermediate steps
+    for (let l = currentLoc; l <= destLoc; l++) {
+      const [r, c] = cellOfRoute(move.color, l);
+      pathKeys.add(`${r},${c}`);
+    }
+    return pathKeys;
+  }, [hoveredToken, previewMoves, mirror.players]);
 
   // Group tokens by coordinate to handle stacking
   const groupedOnTrack: Record<string, any[]> = {};
@@ -251,7 +273,11 @@ export function LudoBoard({
       <div className={`board-wrap ${myColor === 'cyan' ? 'rotated-view' : ''}`} id="boardWrap">
         <div className="board">
           {cells.map((cell) => (
-            <div className={cell.cls} key={cell.k}>
+            <div 
+              className={`${cell.cls} ${hoveredPath.has(cell.k) ? 'path-glow' : ''}`} 
+              key={cell.k}
+              style={hoveredPath.has(cell.k) ? { color: COLORS[hoveredToken?.color || 'pink'] } : {}}
+            >
               {cell.arrow ? <ArrowSVG dir={cell.arrow[0]} color={cell.arrow[1]} /> : null}
               {SAFE.has(cell.k) && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -301,6 +327,8 @@ export function LudoBoard({
                        <div 
                          className={`coin-wrapper ${move ? 'movable' : ''}`}
                          onClick={() => move && onPickMove(move)}
+                         onMouseEnter={() => move && setHoveredToken({ color, i: token.i })}
+                         onMouseLeave={() => setHoveredToken(null)}
                        >
                          <CoinSVG color={COLORS[color]} id={`${color}-yard-${slot}`} style={coinStyle} />
                        </div>
@@ -327,6 +355,8 @@ export function LudoBoard({
                 zIndex: t.movable ? 10 : 5
               }}
               onClick={() => t.move && onPickMove(t.move)}
+              onMouseEnter={() => t.movable && setHoveredToken({ color: t.color, i: t.i })}
+              onMouseLeave={() => setHoveredToken(null)}
             >
               <CoinSVG color={COLORS[t.color]} id={t.color + '-' + t.i} style={coinStyle} />
             </div>

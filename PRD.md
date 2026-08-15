@@ -11,24 +11,29 @@
 ## 3. Functional Requirements
 
 ### 3.1 Gameplay Mechanics
-- **Standard Ludo Logic**: 1v1 match (Pink vs Cyan) with 4 tokens each.
-- **Dynamic Mirroring**: The board rotates 180° based on the player's assigned color (Cyan starts at the bottom for the Cyan player).
-- **Turn Forfeiture**: A 30-second turn timer. Failing to move results in a turn skip rather than a match forfeit.
-- **Bot Integration**: Automated tactical engine for solo training or filling vacancies.
+- **Ludo Logic**: 1v1 match (Pink vs Cyan) with 4 tokens each.
+- **Callbreak Logic**: 4-player trick-taking game. Spades are permanent trumps. 5 deals per match.
+- **Dynamic Mirroring**:
+  - **Ludo**: Board rotates 180° based on the player's assigned color.
+  - **Callbreak**: Table layout always centers the user at the bottom (South) seat for intuitive control.
+- **Turn Forfeiture**: A 30-second turn timer. Failing to move results in a turn skip (Ludo) or auto-play (Callbreak).
+- **Bot Integration**: Automated tactical engine with realistic naming conventions and adaptive skill levels.
 
 ### 3.2 Tactical Reward System (Dividends)
 - **Stake Mechanics**: Matches are played with a defined "Stake."
-- **Capture Bonus**: Capturing an opponent's token yields an immediate **10% Dividend** of the match stake.
-- **Goal Bonus**: Moving a token "Home" yields an immediate **10% Dividend**.
-- **Visual Feedback**: Real-time confetti/spark particles and toast notifications for rewards.
+- **Ludo Dividends**:
+  - **Capture Bonus**: Capturing an opponent's token yields an immediate **10% Dividend**.
+  - **Goal Bonus**: Moving a token "Home" yields an immediate **10% Dividend**.
+- **Callbreak Dividends**:
+  - **Success Bonus**: Meeting or exceeding a call yields a performance-based dividend.
+  - **Trick Mastery**: Winning a trick with a low-rank trump or over-trumping an opponent triggers high-fidelity feedback.
 
 ### 3.3 Visuals & Personalization
-- **Coin Styles**: Three distinct visual modes:
-  - **Classic**: High-fidelity tactile design.
-  - **Neon**: Futuristic glow with gaussian blur effects.
-  - **Metallic**: Premium polished chrome finish.
-- **Dynamic Timer**: Red pulse and color shift when the timer drops below 10 seconds.
-- **Smooth Transitions**: 0.8s cubic-bezier rotation transitions for spatial context.
+- **High-Fidelity UI**: 
+  - **Ludo**: Tactile board with precision-mode rotation.
+  - **Callbreak**: 3D-feel oval table with glowing HUDs and fanned card hands.
+- **Token/Card Styles**: Multiple visual identifies including **Classic**, **Neon**, and **Metallic**.
+- **Dynamic Transitions**: 0.8s - 1.0s cubic-bezier transitions for all spatial actions to provide context and reduce jarring state changes.
 
 ### 3.4 Safety & Integrity
 - **Exit Confirmation**: Prevent accidental leaves during active matches via a modal dialog.

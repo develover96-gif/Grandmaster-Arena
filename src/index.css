@@ -203,6 +203,28 @@
 .token.movable:hover { transform: translate(-50%, -50%) scale(1.15); z-index: 10; }
 .token.movable svg { animation: pulseToken 1.4s ease-in-out infinite; }
 
+.path-glow {
+  position: relative;
+}
+
+.path-glow::after {
+  content: '';
+  position: absolute;
+  inset: 15%;
+  background: currentColor;
+  border-radius: 50%;
+  filter: blur(8px);
+  opacity: 0.4;
+  animation: cellGlow 0.8s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes cellGlow {
+  from { opacity: 0.2; transform: scale(0.8); }
+  to { opacity: 0.5; transform: scale(1.1); }
+}
+
 .timer-warning {
   color: #ef4444 !important;
   animation: timerPulse 0.5s ease-in-out infinite alternate;

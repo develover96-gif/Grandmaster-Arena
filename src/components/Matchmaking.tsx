@@ -3,10 +3,11 @@ import { motion } from 'motion/react';
 
 interface MatchmakingProps {
   stake: number;
+  gameType?: string;
   onCancel: () => void;
 }
 
-export const Matchmaking: React.FC<MatchmakingProps> = ({ stake, onCancel }) => {
+export const Matchmaking: React.FC<MatchmakingProps> = ({ stake, gameType, onCancel }) => {
   return (
     <div className="min-h-screen bg-[#0A0B0E] text-slate-300 flex flex-col items-center justify-center p-6 font-sans relative overflow-hidden">
       {/* Background patterns */}
@@ -45,8 +46,11 @@ export const Matchmaking: React.FC<MatchmakingProps> = ({ stake, onCancel }) => 
           <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.3em]">Locating worthy challenger</p>
         </div>
 
-        <div className="bg-indigo-900/10 border border-indigo-500/20 py-3 px-6 rounded-xl inline-block">
-          <span className="text-indigo-400 font-mono text-sm font-bold uppercase tracking-widest">
+        <div className="bg-indigo-900/10 border border-indigo-500/20 py-3 px-6 rounded-xl flex flex-col gap-1 items-center">
+          <span className="text-indigo-400 font-mono text-sm font-black uppercase tracking-widest leading-none">
+            {gameType?.toUpperCase() || 'ARENA'}
+          </span>
+          <span className="text-[10px] text-indigo-500/60 font-mono uppercase tracking-widest">
             STAKE: {stake.toFixed(3)} Ξ
           </span>
         </div>

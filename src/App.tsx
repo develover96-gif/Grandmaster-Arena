@@ -4,6 +4,7 @@ import { GameState, ClientToServerEvents, ServerToClientEvents, LudoToken } from
 import { Lobby } from './components/Lobby';
 import { Board } from './components/Board';
 import { LudoBoard } from './components/LudoBoard';
+import { CallbreakArena } from './games/callbreak/CallbreakArena';
 import Dice3D from './components/Dice3D';
 import { Matchmaking } from './components/Matchmaking';
 import { Trophy, Swords, ArrowLeft, Coins } from 'lucide-react';
@@ -20,6 +21,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [isMatching, setIsMatching] = useState(false);
   const [selectedStake, setSelectedStake] = useState<number | null>(null);
+  const [selectedGameType, setSelectedGameType] = useState<'checkers' | 'ludo' | 'callbreak'>('ludo');
   const [isShaking, setIsShaking] = useState(false);
   const [bonusToast, setBonusToast] = useState<{ id: number; msg: string; color: string } | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -114,8 +116,9 @@ export default function App() {
     };
   }, []);
 
-  const handleMatchSearch = useCallback((data: { stake: number; gameType: 'checkers' | 'ludo' }) => {
+  const handleMatchSearch = useCallback((data: { stake: number; gameType: 'checkers' | 'ludo' | 'callbreak' }) => {
     setSelectedStake(data.stake);
+    setSelectedGameType(data.gameType);
     setIsMatching(true);
     socket.emit('match:search', data);
   }, []);
@@ -154,11 +157,15 @@ export default function App() {
   };
 
   if (!gameState && isMatching) {
-    return <Matchmaking stake={selectedStake || 0.025} onCancel={handleLeave} />;
+    return <Matchmaking stake={selectedStake || 0.025} gameType={selectedGameType} onCancel={handleLeave} />;
   }
 
   if (!gameState) {
     return <Lobby onJoinRoom={handleJoinRoom} onMatchSearch={handleMatchSearch} />;
+  }
+
+  if (gameState.gameType === 'callbreak') {
+    return <CallbreakArena socket={socket} roomId={gameState.roomId} />;
   }
 
   const isMyTurn = playerColor === gameState.turn;

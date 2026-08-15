@@ -5,12 +5,12 @@ import { Plus, LogIn, Swords } from 'lucide-react';
 
 interface LobbyProps {
   onJoinRoom: (roomId: string) => void;
-  onMatchSearch: (data: { stake: number; gameType: 'checkers' | 'ludo' }) => void;
+  onMatchSearch: (data: { stake: number; gameType: 'checkers' | 'ludo' | 'callbreak' }) => void;
 }
 
 export const Lobby: React.FC<LobbyProps> = ({ onJoinRoom, onMatchSearch }) => {
   const [stake, setStake] = useState(0.025);
-  const [gameType, setGameType] = useState<'checkers' | 'ludo'>('ludo');
+  const [gameType, setGameType] = useState<'checkers' | 'ludo' | 'callbreak'>('callbreak');
   const [roomCode, setRoomCode] = useState('');
 
   const stakes = [
@@ -49,18 +49,24 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinRoom, onMatchSearch }) => {
         </div>
 
         <div className="bg-[#12141C] border border-slate-800 rounded-[2rem] p-8 space-y-8 shadow-2xl">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-3">
             <button
               onClick={() => setGameType('checkers')}
-              className={`p-4 rounded-xl border transition-all text-center ${gameType === 'checkers' ? 'bg-indigo-600/10 border-indigo-500' : 'bg-[#1A1C23] border-slate-800'}`}
+              className={`p-3 rounded-xl border transition-all text-center ${gameType === 'checkers' ? 'bg-indigo-600/10 border-indigo-500' : 'bg-[#1A1C23] border-slate-800'}`}
             >
-              <p className="text-sm font-bold text-white">CHECKERS</p>
+              <p className="text-[10px] font-bold text-white uppercase">Checkers</p>
             </button>
             <button
               onClick={() => setGameType('ludo')}
-              className={`p-4 rounded-xl border transition-all text-center ${gameType === 'ludo' ? 'bg-indigo-600/10 border-indigo-500' : 'bg-[#1A1C23] border-slate-800'}`}
+              className={`p-3 rounded-xl border transition-all text-center ${gameType === 'ludo' ? 'bg-indigo-600/10 border-indigo-500' : 'bg-[#1A1C23] border-slate-800'}`}
             >
-              <p className="text-sm font-bold text-white">LUDO</p>
+              <p className="text-[10px] font-bold text-white uppercase">Ludo</p>
+            </button>
+            <button
+              onClick={() => setGameType('callbreak')}
+              className={`p-3 rounded-xl border transition-all text-center ${gameType === 'callbreak' ? 'bg-indigo-600/10 border-indigo-500' : 'bg-[#1A1C23] border-slate-800'}`}
+            >
+              <p className="text-[10px] font-bold text-white uppercase">Callbreak</p>
             </button>
           </div>
 

@@ -5,6 +5,7 @@ import { Server } from 'socket.io';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GameState, Piece, CheckersColor, LudoColor, Move, LudoToken } from './src/types';
+import { initCallbreak, startNewDeal, handleBid, handlePlay, broadcastFilteredState, getRandomBotName } from './src/games/callbreak/serverLogic';
 
 const PORT = 3000;
 
@@ -299,12 +300,24 @@ async function startServer() {
   }
 
   // --- Shared Logic ---
-  function createRoom(roomId: string, gameType: 'checkers' | 'ludo' = 'checkers', stake: number = 0.025): GameState {
-    const players: Record<string, any> = gameType === 'checkers' ? { w: null, b: null } : { 
-      pink: { id: null, tokens: initLudoTokens('pink'), balance: stake }, 
-      cyan: { id: null, tokens: initLudoTokens('cyan'), balance: stake } 
-    };
-    const turn = gameType === 'checkers' ? 'w' : 'pink';
+  function createRoom(roomId: string, gameType: 'checkers' | 'ludo' | 'callbreak' = 'checkers', stake: number = 0.025): GameState {
+    let players: Record<string, any>;
+    let turn = 'w';
+
+    if (gameType === 'checkers') {
+      players = { w: null, b: null };
+      turn = 'w';
+    } else if (gameType === 'ludo') {
+      players = { 
+        pink: { id: null, tokens: initLudoTokens('pink'), balance: stake }, 
+        cyan: { id: null, tokens: initLudoTokens('cyan'), balance: stake } 
+      };
+      turn = 'pink';
+    } else {
+      // callbreak
+      players = {}; // Handled by room:join for now
+      turn = '0';
+    }
 
     const room: GameState = {
       roomId,
@@ -320,17 +333,19 @@ async function startServer() {
     if (gameType === 'checkers') {
       room.board = initBoard();
       room.captures = { w: 0, b: 0 };
-    } else {
+    } else if (gameType === 'ludo') {
       room.lastRoll = null;
       room.diceRolled = false;
       room.consecutiveSixes = 0;
+    } else if (gameType === 'callbreak') {
+      Object.assign(room, initCallbreak(roomId, stake));
     }
 
     return room;
   }
 
   io.on('connection', (socket) => {
-    socket.on('match:search', ({ stake, gameType }: { stake: number, gameType: 'checkers' | 'ludo' }) => {
+    socket.on('match:search', ({ stake, gameType }: { stake: number, gameType: 'checkers' | 'ludo' | 'callbreak' }) => {
       const queueKey = `${stake}-${gameType}`;
       if (!matchmakingQueue[queueKey]) matchmakingQueue[queueKey] = [];
       if (matchmakingQueue[queueKey].includes(socket.id)) return;
@@ -353,13 +368,16 @@ async function startServer() {
             if (gameType === 'ludo') {
               rooms[roomId].players[playerKeys[0]].id = socket.id;
               rooms[roomId].players[playerKeys[1]].id = BOT_ID;
-            } else {
+              rooms[roomId].status = 'playing';
+            } else if (gameType === 'checkers') {
               rooms[roomId].players[playerKeys[0]] = socket.id;
               rooms[roomId].players[playerKeys[1]] = BOT_ID;
+              rooms[roomId].status = 'playing';
+            } else if (gameType === 'callbreak') {
+               // Callbreak handled by room:join after match:found
             }
-            rooms[roomId].status = 'playing';
             socket.emit('match:found', roomId);
-            socket.emit('player:assigned', playerKeys[0]);
+            if (gameType !== 'callbreak') socket.emit('player:assigned', playerKeys[0]);
           }
         }, 15000);
       }
@@ -379,37 +397,88 @@ async function startServer() {
       }
       socket.join(roomId);
 
-      const playerKeys = Object.keys(room.players);
-      const isLudo = room.gameType === 'ludo';
-      const emptyKey = playerKeys.find(k => isLudo ? !room.players[k].id : !room.players[k]);
-
-      if (emptyKey) {
-        if (isLudo) {
-          room.players[emptyKey].id = socket.id;
-        } else {
-          room.players[emptyKey] = socket.id;
+      if (room.gameType === 'callbreak') {
+        let seat = (room.players as any[]).findIndex((p: any) => p.id === socket.id);
+        if (seat === -1) {
+          if (room.status !== 'waiting') return;
+          seat = (room.players as any[]).length;
+          if (seat < 4) {
+            (room.players as any[]).push({
+              id: socket.id,
+              name: `Player ${seat + 1}`,
+              isBot: false,
+              seat,
+              hand: [],
+              call: null,
+              tricksWon: 0,
+              score: 0,
+              cumulativeScore: 0
+            });
+            socket.emit('player:assigned', seat);
+          }
         }
-        socket.emit('player:assigned', emptyKey);
-        
-        if (emptyKey === playerKeys[0]) {
-          botTimeouts[roomId] = setTimeout(() => {
-            if (rooms[roomId]) {
-              const p2 = rooms[roomId].players[playerKeys[1]];
-              const p2Id = isLudo ? p2.id : p2;
-              if (!p2Id) {
-                if (isLudo) rooms[roomId].players[playerKeys[1]].id = BOT_ID;
-                else rooms[roomId].players[playerKeys[1]] = BOT_ID;
-                rooms[roomId].status = 'playing';
-                io.to(roomId).emit('game:update', rooms[roomId]);
-              }
-            }
-          }, 15000);
-        } else {
+
+        if (room.players.length === 1) {
+           botTimeouts[roomId] = setTimeout(() => {
+             if (rooms[roomId] && rooms[roomId].gameType === 'callbreak' && rooms[roomId].status === 'waiting') {
+               while (rooms[roomId].players.length < 4) {
+                 const s = rooms[roomId].players.length;
+                 const usedNames = (rooms[roomId].players as any[]).map(p => p.name);
+                 rooms[roomId].players.push({
+                   id: BOT_ID,
+                   name: getRandomBotName(usedNames),
+                   isBot: true,
+                   seat: s,
+                   hand: [],
+                   call: null,
+                   tricksWon: 0,
+                   score: 0,
+                   cumulativeScore: 0
+                 });
+               }
+               rooms[roomId].status = 'playing';
+               startNewDeal(rooms[roomId], io);
+             }
+           }, 10000);
+        } else if (room.players.length === 4) {
           room.status = 'playing';
           if (botTimeouts[roomId]) clearTimeout(botTimeouts[roomId]);
+          startNewDeal(room, io);
         }
+        broadcastFilteredState(room, io);
+      } else {
+        const playerKeys = Object.keys(room.players);
+        const isLudo = room.gameType === 'ludo';
+        const emptyKey = playerKeys.find(k => isLudo ? !room.players[k].id : !room.players[k]);
+
+        if (emptyKey) {
+          if (isLudo) {
+            room.players[emptyKey].id = socket.id;
+          } else {
+            room.players[emptyKey] = socket.id;
+          }
+          socket.emit('player:assigned', emptyKey);
+          
+          if (emptyKey === playerKeys[0]) {
+            botTimeouts[roomId] = setTimeout(() => {
+              if (rooms[roomId]) {
+                const p2 = rooms[roomId].players[playerKeys[1]];
+                const p2Id = isLudo ? p2.id : p2;
+                if (!p2Id) {
+                  if (isLudo) rooms[roomId].players[playerKeys[1]].id = BOT_ID;
+                  else rooms[roomId].players[playerKeys[1]] = BOT_ID;
+                  rooms[roomId].status = 'playing';
+                  io.to(roomId).emit('game:update', rooms[roomId]);
+                }
+              }
+            }, 15000);
+          } else {
+            room.status = 'playing';
+            if (botTimeouts[roomId]) clearTimeout(botTimeouts[roomId]);
+          }
+        }
+        io.to(roomId).emit('game:update', room);
       }
-      io.to(roomId).emit('game:update', room);
     });
 
     socket.on('game:roll', ({ roomId }) => {
@@ -521,6 +590,40 @@ async function startServer() {
       } else if (room.gameType === 'ludo') {
         executeLudoMove(roomId, move.tokenId);
       }
+    });
+
+    socket.on('game:bid', ({ roomId, call }) => {
+      const room = rooms[roomId];
+      if (!room || room.gameType !== 'callbreak') return;
+      const seat = (room.players as any[]).findIndex((p: any) => p.id === socket.id);
+      if (seat === -1) return;
+      handleBid(room, seat, call, io);
+    });
+
+    socket.on('game:play', ({ roomId, card }) => {
+      const room = rooms[roomId];
+      if (!room || room.gameType !== 'callbreak') return;
+      const seat = (room.players as any[]).findIndex((p: any) => p.id === socket.id);
+      if (seat === -1) return;
+      handlePlay(room, seat, card, io);
+    });
+
+    socket.on('game:chat', ({ roomId, message }) => {
+      const room = rooms[roomId];
+      if (!room) return;
+      let name = 'User';
+      let color = '#ff2e7e';
+      
+      if (room.gameType === 'callbreak') {
+        const p = (room.players as any[]).find((p: any) => p.id === socket.id);
+        if (p) {
+          name = p.name;
+          const colors = ['#ff2e7e', '#26c6ee', '#f5c542', '#9d7cff'];
+          color = colors[p.seat % colors.length];
+        }
+      }
+      
+      io.to(roomId).emit('game:log', { message: `${name}: ${message}`, color });
     });
 
     socket.on('disconnect', () => {

@@ -6,14 +6,14 @@
 
 ## ✨ Core Features
 
-- **Personalized Viewpoint**: Our **Mirror-Orientation System** automatically rotates the board so you are always in the "Home" seat.
-- **Dividend Economy**: Earn a **10% Stake Bonus** every time you capture a token or reach the home goal.
-- **Tactical Visuals**:
-  - **Timer Alerts**: Progress bar pulses red when you have less than 10 seconds remaining.
-  - **Particle Celebrations**: High-energy confetti and sparks powered by `canvas-confetti`.
-  - **Token Styles**: Choose between **Classic**, **Neon**, and **Metallic** visual identities.
-- **Fair Play**: Server-authoritative logic ensures every dice roll and move is synchronized and secure.
-- **Tactical Bot**: Integrated engine for solo play and training.
+- **Multi-Game Support**: Choose between high-stakes **Ludo**, **Checkers**, and **Callbreak** from a single unified lobby.
+- **Personalized Viewpoint**: Our **Mirror-Orientation System** ensures you always occupy the prime seat, regardless of your assigned color or seat number.
+- **Tactical Dividends**: Earn immediate rewards for aggressive gameplay (captures, goals, and successful calls).
+- **Professional Arenas**:
+  - **Ludo**: Smooth 0.8s board rotations with tactical path projections.
+  - **Callbreak**: A 3D-inspired oval table with glowing HUDs, realistic bot names, and smooth card fan physics.
+- **Provably Fair**: All shuffles and dice rolls are backed by SHA-256 commitment schemes, ensuring total transparency.
+- **Tactical Bots**: Adaptive AI opponents with human-like naming conventions (Aria, Soren, Mira, etc.) to ensure instant matchmaking.
 
 ## 🚀 Technical Stack
 
